@@ -1,0 +1,30 @@
+{
+  "best_params": {
+    "lambda_over": 0,
+    "lambda_under": 0,
+    "theta_queue": 0
+  },
+  "router": {
+    "cash_spent": 1113700.0,
+    "avg_price": 222.74
+  },
+  "baselines": {
+    "best_ask": {
+      "cash_spent": 1114102.2800000003,
+      "avg_price": 222.82045600000006
+    },
+    "twap": {
+      "cash_spent": 1114400.0,
+      "avg_price": 222.88
+    },
+    "vwap": {
+      "cash_spent": 1115309.2012944343,
+      "avg_price": 223.06184025888683
+    }
+  },
+  "savings_bps": {
+    "vs_best_ask": 3.6107995398794146,
+    "vs_twap": 6.28140703517588,
+    "vs_vwap": 14.428297485276806
+  }
+}

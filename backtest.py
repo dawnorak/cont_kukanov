@@ -12,7 +12,7 @@ STEP = 100  # allocation granularity
 FEE = 0.003
 REBATE = 0.002
 
-# Build a list of venue dictionaries for snapshot
+# Build a list of venue dictionaries for snapshot: ['venue', 'ask', 'ask_size', 'fee', 'rebate']
 def build_snapshot(df):
     return [{
         'venue': row['publisher_id'],
@@ -67,7 +67,7 @@ def run_router(snapshots, l_over, l_under, theta):
 
     for ts, venues in snapshots:
         if remaining <= 0 or not venues:
-            continue
+            break
         split, _ = allocate(remaining, venues, l_over, l_under, theta)
         cash_step = qty_step = 0
         for i, qty in enumerate(split):
@@ -79,11 +79,25 @@ def run_router(snapshots, l_over, l_under, theta):
             cash_spent += cash_step
             cum_qty += qty_step
             cum_data.append((ts, cum_qty, cash_spent))
-        if remaining <= 0:
-            break
 
     avg_price = cash_spent / cum_qty if cum_qty else 0
     return cash_spent, avg_price, cum_data
+
+# Search for best router params
+def tune_router(snapshots, l_list, theta_list):
+    best = {"cost": float('inf'), "params": {}, "avg": None, "data": []}
+    for l_over, l_under, theta in product(l_list, l_list, theta_list):
+        cash, avg, data = run_router(snapshots, l_over, l_under, theta)
+        filled = data[-1][1] if data else 0
+        # Only accept fully filled routes
+        if abs(filled - ORDER_SIZE) < 1e-6 and cash < best["cost"]:
+            best.update({
+                "cost": cash,
+                "avg": avg,
+                "params": {"lambda_over": l_over, "lambda_under": l_under, "theta_queue": theta},
+                "data": data
+            })
+    return best
 
 # Naive Best Ask
 def best_ask(snapshots):
@@ -133,22 +147,6 @@ def vwap(df):
     total_sz = df['ask_sz_00'].sum()
     vwap = (df['ask_px_00'] * df['ask_sz_00']).sum() / total_sz if total_sz else 0
     return vwap * ORDER_SIZE, vwap
-
-# Search for best router params
-def tune_router(snapshots, l_list, theta_list):
-    best = {"cost": float('inf'), "params": {}, "avg": None, "data": []}
-    for l_over, l_under, theta in product(l_list, l_list, theta_list):
-        cash, avg, data = run_router(snapshots, l_over, l_under, theta)
-        filled = data[-1][1] if data else 0
-        # Only accept fully filled routes
-        if abs(filled - ORDER_SIZE) < 1e-6 and cash < best["cost"]:
-            best.update({
-                "cost": cash,
-                "avg": avg,
-                "params": {"lambda_over": l_over, "lambda_under": l_under, "theta_queue": theta},
-                "data": data
-            })
-    return best
 
 # Plot cost over time for all strategies
 def plot_cost(router_data, best_ask_data, twap_data, vwap_price, filename="results.png"):
